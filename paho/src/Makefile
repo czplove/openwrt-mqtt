@@ -13,7 +13,7 @@
 #  Contributors:
 #     Xiang Rong - 442039 Add makefile to Embedded C client
 #*******************************************************************************/
-
+#add + line 48
 # Note: on OS X you should install XCode and the associated command-line tools
 
 SHELL = /bin/sh
@@ -45,7 +45,7 @@ SOURCE_FILES_C = $(srcdir)/*.c
 HEADERS = $(srcdir)/*.h
 
 
-SAMPLE_FILES_C = pub0sub1 qos0pub
+SAMPLE_FILES_C = pub0sub1 qos0pub ser_pub  
 SYNC_SAMPLES = ${addprefix ${blddir}/samples/,${SAMPLE_FILES_C}}
 
 
@@ -102,7 +102,7 @@ ${SYNC_TESTS}: ${blddir}/test/%: ${srcdir}/../test/%.c
 	${CC} -g -o ${blddir}/test/${basename ${+F}} $< -l${MQTT_EMBED_LIB_C} ${FLAGS_EXE}
 
 
-${SYNC_SAMPLES}: ${blddir}/samples/%: ${srcdir}/../samples/%.c ${srcdir}/../samples/transport.o
+${SYNC_SAMPLES}: ${blddir}/samples/%: ${srcdir}/../samples/%.c ${srcdir}/../samples/transport.o ${srcdir}/../samples/uart.o
 	${CC} -o $@ $^ -l${MQTT_EMBED_LIB_C} ${FLAGS_EXE}
 
 

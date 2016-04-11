@@ -1,9 +1,9 @@
-##############################################
-#OpenWrt Makefile for paho program
+###############################################
+#OpenWrt Makefile for helloworld program
 ##############################################
 include $(TOPDIR)/rules.mk
 # Name and release number of this package
-PKG_NAME:=paho
+PKG_NAME:=test
 PKG_RELEASE:=1
 # This specifies the directory where we're going to build the program.
 # The root build directory, $(BUILD_DIR), is by default the  build_mipsel
@@ -15,14 +15,14 @@ include $(INCLUDE_DIR)/package.mk
 # If you are running Kamikaze, delete the DESCRIPTION
 # variable below and uncomment the Kamikaze define
 # directive for the description below
-define Package/paho
+define Package/$(PKG_NAME)
 	SECTION:=utils
 	CATEGORY:=Utilities
-	TITLE:=paho -- prints a snarky message
+	TITLE:=Helloworld -- prints a snarky message
+	DEPENDS:=+libstdcpp +libc +libpaho-embed-mqtt3c
 endef
-#	DEPENDS:=+libstdcpp +libc
 # Uncomment portion below for Kamikaze and delete DESCRIPTION variable above
-define Package/paho/description
+define Package/$(PKG_NAME)/description
     If you can't figure out what this program does, you're probably
     brain-dead and need immediate medical attention.
 endef
@@ -34,7 +34,7 @@ endef
 # much easier to do it this way.
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) -r  ./src/* $(PKG_BUILD_DIR)/
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef
 # We do not need to define Build/Configure or Build/Compile directives
 # The defaults are appropriate for compiling a simple program such as   this one
@@ -45,14 +45,13 @@ endef
 # directory if it does not already exist.  Likewise $(INSTALL_BIN) contains the
 # command to copy the binary file from its current location (in our case the build
 # directory) to the install directory.
-define Package/paho/install
-	$(INSTALL_DIR) $(1)/bin
+define Package/$(PKG_NAME)/install
+	$(INSTALL_DIR) $(1)/tmp
 	$(INSTALL_DIR) $(1)/usr/lib
-	$(INSTALL_BIN)  $(PKG_BUILD_DIR)/build/output/lib* $(1)/usr/lib  
-	$(INSTALL_BIN)  $(PKG_BUILD_DIR)/build/output/samples/* $(1)/bin
-	$(INSTALL_BIN)  $(PKG_BUILD_DIR)/build/output/test/test1 $(1)/bin
+	$(CP) ~/wrtnode/openwrt/bin/ramips/OpenWrt-SDK-ramips-mt7628_gcc-4.8-linaro_uClibc-0.9.33.2.Linux-x86_64/package/test/src/build/output/lib* $(1)/usr/lib 
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/output/samples/qos0pub $(1)/tmp/
 endef
 # This line executes the necessary commands to compile our program.
 # The above define directives specify all the information needed, but this
 # line calls BuildPackage which in turn actually uses this information to build a package.
-$(eval $(call BuildPackage,paho))
+$(eval $(call BuildPackage,$(PKG_NAME)))
