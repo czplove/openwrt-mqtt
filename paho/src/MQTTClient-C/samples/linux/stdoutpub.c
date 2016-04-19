@@ -53,6 +53,26 @@
 
 volatile int toStop = 0;
 
+/*接受的数据格式*/
+/*
+typedef	signed		char int8;
+typedef	unsigned	char uint8;
+typedef struct RFTXBUF
+{
+	uint8 	myNWK[4];//自身网络地址
+	uint8	myMAC[16];//mac;
+	uint8 	pNWK[4];//父节点网络地址
+	uint8	pMAC[16];//mac
+}RFTX;
+typedef struct
+{
+	uint8	type;
+	uint8	record[3];
+	RFTX 	addr;
+}Data_t;
+
+*/
+
 
 void usage()
 {
@@ -199,17 +219,20 @@ int main(int argc, char** argv)
 	unsigned char readbuf[100];
 
 	/**********UART************/
-	int fd = FALSE;    			  
-    int ret;   			   			  
-    char	rcv_buf[512];
+	int		fd = FALSE;    			  
+    int 	ret;   			   			  
+    unsigned char	rcv_buf[512];
+	unsigned char 	send_buf[64];
+	Data_t	rcv_data;
     int i;
+	int j;
 
 	fd = UART_Open(fd,"/dev/ttyS1"); 
     if(FALSE == fd){	
 	   printf("open error\n");	
 	   exit(1); 	
     }
-    ret  = UART_Init(fd,9600,0,8,1,'N');
+    ret  = UART_Init(fd,115200,0,8,1,'N');
     if (FALSE == fd){	
 	   printf("Set Port Error\n");	
 	   exit(1); 
@@ -236,7 +259,7 @@ int main(int argc, char** argv)
 
 	Network n;
 	Client c;
-	MQTTMessage message={0,0,0,0,"hello",5};
+	MQTTMessage message={0,0,0,0,"hello",5};//dup,qos,retained,packetid,payload,payloadlen
 
 
 	NewNetwork(&n);
@@ -259,21 +282,45 @@ int main(int argc, char** argv)
     
 	for(i=0;;i++)
     {
-		ret = UART_Recv(fd, rcv_buf,512);	
-    	if( ret > 1)
+		printf("for\n");
+		ret = UART_Recv(fd, rcv_buf,512);
+/*		if(ret > 0)
+		{
+			if(rcv_buf[0] == '@')
+			{
+				printf("receive @\n");
+				ret = UART_Recv(fd, rcv_buf,sizeof(rcv_data));
+				printf("ret is %d \n",ret);
+				printf("type:%x\n",((Data_t *)rcv_buf)->record[0]);
+			}
+		}
+*/
+    	if( ret > 0 )
 		{//ret > 0  
-	   		rcv_buf[ret]='\0';		
-
-    		printf("Publishing to %s\n", topic);
-
-			message.payload = rcv_buf;
-			message.payloadlen = strlen(rcv_buf);
-			MQTTPublish(&c,topic,&message);
-	   		printf("%s",rcv_buf);	
-	   	}
+//			printf("received--------%x\n",rcv_buf[0]);
+			if(rcv_buf[0] == '@')
+			{
+    			printf("Publishing to %s\n", topic);
+				for(j=1;j<5;j++)
+				{
+					sprintf(&send_buf[j-1],"%x",rcv_buf[j]);
+				}
+				for(;j<45;j++)
+					sprintf(&send_buf[j-1],"%c",rcv_buf[j]);
+				send_buf[strlen(send_buf)] = '\0';
+				printf("%s",send_buf);
+				printf("--");
+//			message.payload = ;
+//			message.payloadlen = strlen(rcv_buf);
+//			MQTTPublish(&c,topic,&message);
+//	   		printf("%x\n",rcv_buf[1]);	
+	   		}
+			else
+				continue;//the first byte is not '@'
+		}
 		else 
 		{	
-	 	//  printf("cannot receive data1\n");	
+	 		  printf("cannot receive data1\n");	
         //    break;
 	   	}
 //	 if('\n' == rcv_buf[ret-1])

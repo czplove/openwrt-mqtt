@@ -3,6 +3,22 @@
 
 #define FALSE  -1
 #define TRUE   0
+/*接受的数据格式*/
+typedef signed      char int8;
+typedef unsigned    char uint8;
+typedef struct RFTXBUF
+{
+	uint8   myNWK[4];//自身网络地址
+	uint8   myMAC[16];//mac;
+	uint8   pNWK[4];//父节点网络地址
+	uint8   pMAC[16];//mac
+}RFTX;
+typedef struct
+{
+	uint8   type;
+    uint8   record[3];
+    RFTX    addr;
+}Data_t;
 
 
 int UART_Open(int fd,char* port);
