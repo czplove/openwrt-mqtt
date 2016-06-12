@@ -1,7 +1,7 @@
 #ifndef _UART_H_
 #define _UART_H_
 
-#include <cJSON.h>
+#include "cJSON.h"
 #define FALSE  -1
 #define TRUE   0
 /*传感器类型*/
@@ -12,6 +12,7 @@
 #define PRESSURE      	 0x05
 #define INFRARED     	 0x06
 #define ACCELERATION  	 0x07
+extern int fd;
 /*接受的数据格式*/
 typedef signed      char int8;
 typedef unsigned    char uint8;

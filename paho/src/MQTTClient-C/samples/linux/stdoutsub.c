@@ -3,11 +3,11 @@
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
- * and Eclipse Distribution License v1.0 which accompany this distribution. 
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
  *
- * The Eclipse Public License is available at 
+ * The Eclipse Public License is available at
  *   http://www.eclipse.org/legal/epl-v10.html
- * and the Eclipse Distribution License is available at 
+ * and the Eclipse Distribution License is available at
  *   http://www.eclipse.org/org/documents/edl-v10.php.
  *
  * Contributors:
@@ -17,21 +17,21 @@
  *******************************************************************************/
 
 /*
- 
+
  stdout subscriber
- 
+
  compulsory parameters:
- 
+
   topic to subscribe to
- 
+
  defaulted parameters:
- 
+
 	--host localhost
 	--port 1883
 	--qos 2
 	--delimiter \n
 	--clientid stdout_subscriber
-	
+
 	--userid none
 	--password none
 
@@ -43,12 +43,12 @@
 #include <stdio.h>
 #include "MQTTClient.h"
 
-#include <stdio.h>
 #include <signal.h>
 #include <memory.h>
 
 #include <sys/time.h>
 
+#include "uart.h"
 
 volatile int toStop = 0;
 
@@ -65,6 +65,7 @@ void usage()
 	printf("  --username none\n");
 	printf("  --password none\n");
 	printf("  --showtopics <on or off> (default is on if the topic has a wildcard, else off)\n");
+    printf("  --device <device name> (default is /dev/ttyS1)\n");
 	exit(-1);
 }
 
@@ -87,16 +88,17 @@ struct opts_struct
 	char* host;
 	int port;
 	int showtopics;
+    char *device;
 } opts =
 {
-	(char*)"stdout-subscriber", 0, (char*)"\n", QOS2, NULL, NULL, (char*)"localhost", 1883, 0
+    (char*)"wrtnode-subscriber", 0, (char*)"\n", QOS2, NULL, NULL, (char*)"localhost", 1883, 0,"/dev/ttyS1"
 };
 
 
 void getopts(int argc, char** argv)
 {
 	int count = 2;
-	
+
 	while (count < argc)
 	{
 		if (strcmp(argv[count], "--qos") == 0)
@@ -171,35 +173,54 @@ void getopts(int argc, char** argv)
 			else
 				usage();
 		}
+        else if (strcmp(argv[count], "--device") == 0)
+		{
+			if (++count < argc)
+                opts.device = argv[count];
+			else
+				usage();
+		}
 		count++;
 	}
-	
+
 }
 
 
 void messageArrived(MessageData* md)
 {
 	MQTTMessage* message = md->message;
+    int ret = FALSE;
 
 	if (opts.showtopics)
 		printf("%.*s\t", md->topicName->lenstring.len, md->topicName->lenstring.data);
 	if (opts.nodelimiter)
 		printf("%.*s", (int)message->payloadlen, (char*)message->payload);
 	else
+    {
 		printf("%.*s%s", (int)message->payloadlen, (char*)message->payload, opts.delimiter);
+        ret  = UART_Send(fd,(char*)message->payload,(int)message->payloadlen);
+        if(FALSE == ret){
+	        printf("write error!\n");
+	       // exit(1);
+        }
+    }
 	//fflush(stdout);
 }
 
 
+int fd = FALSE;
 int main(int argc, char** argv)
 {
 	int rc = 0;
 	unsigned char buf[100];
 	unsigned char readbuf[100];
-	
+
+    int ret =  FALSE;
+
+
 	if (argc < 2)
 		usage();
-	
+
 	char* topic = argv[1];
 
 	if (strchr(topic, '#') || strchr(topic, '+'))
@@ -207,7 +228,7 @@ int main(int argc, char** argv)
 	if (opts.showtopics)
 		printf("topic is %s\n", topic);
 
-	getopts(argc, argv);	
+	getopts(argc, argv);
 
 	Network n;
 	Client c;
@@ -215,11 +236,22 @@ int main(int argc, char** argv)
 	signal(SIGINT, cfinish);
 	signal(SIGTERM, cfinish);
 
+    fd = UART_Open(fd,opts.device);
+    if(FALSE == fd){
+	   printf("open error\n");
+	   exit(1);
+    }
+    ret  = UART_Init(fd,115200,0,8,1,'N');
+    if (FALSE == ret){
+	   printf("Set Port Error\n");
+	   exit(1);
+    }
+
 	NewNetwork(&n);
 	ConnectNetwork(&n, opts.host, opts.port);
 	MQTTClient(&c, &n, 1000, buf, 100, readbuf, 100);
- 
-	MQTTPacket_connectData data = MQTTPacket_connectData_initializer;       
+
+	MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
 	data.willFlag = 0;
 	data.MQTTVersion = 3;
 	data.clientID.cstring = opts.clientid;
@@ -229,23 +261,24 @@ int main(int argc, char** argv)
 	data.keepAliveInterval = 10;
 	data.cleansession = 1;
 	printf("Connecting to %s %d\n", opts.host, opts.port);
-	
+
 	rc = MQTTConnect(&c, &data);
 	printf("Connected %d\n", rc);
-    
+
     printf("Subscribing to %s\n", topic);
 	rc = MQTTSubscribe(&c, topic, opts.qos, messageArrived);
 	printf("Subscribed %d\n", rc);
 
 	while (!toStop)
 	{
-		MQTTYield(&c, 1000);	
+		MQTTYield(&c, 1000);
 	}
-	
+
 	printf("Stopping\n");
 
 	MQTTDisconnect(&c);
 	n.disconnect(&n);
+    UART_Close(fd);
 
 	return 0;
 }

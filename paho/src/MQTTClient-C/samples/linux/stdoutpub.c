@@ -110,7 +110,7 @@ struct opts_struct
 	int showtopics;
 } opts =
 {
-	(char*)"stdout-subscriber", 0, (char*)"\n", QOS2, NULL, NULL, (char*)"localhost", 1883, 0
+    (char*)"wrtnode-publisher", 0, (char*)"\n", QOS2, NULL, NULL, (char*)"localhost", 1883, 0
 };
 
 
@@ -387,15 +387,20 @@ int main(int argc, char** argv)
 			else
             {
                 printf("the first bit is not ＠");
-                while(rcv_buf[0] != '@')
+                while( rcv_buf[0] != '@')
                 {
-                    UART_Recv(fd, rcv_buf,1);
-                    printf("hahah not @\n");
-                    if(count++ > 50)
+                   if( UART_Recv(fd, rcv_buf,1)>0)
+
+
+                    {printf("%x-",rcv_buf[0]);
+                   // printf("hahah not @\n");
+                    if(count++ > 1000)
                     {
 
                         printf("error,no '＠'，波特率？\n");
                         exit(-1);
+                    }
+
                     }
                 }
                 UART_Recv(fd, rcv_buf,MSG_LEN - 1);

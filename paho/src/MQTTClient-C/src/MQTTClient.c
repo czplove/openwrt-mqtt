@@ -169,12 +169,17 @@ int deliverMessage(Client* c, MQTTString* topicName, MQTTMessage* message)
             if (c->messageHandlers[i].fp != NULL)
             {
                 MessageData md;
+            printf("---------\n");
                 NewMessageData(&md, topicName, message);
+            printf("---------\n");
                 c->messageHandlers[i].fp(&md);
-                rc = SUCCESS;
+             printf("---------\n");
+               rc = SUCCESS;
             }
         }
     }
+            printf("---------\n");
+
 
     if (rc == FAILURE && c->defaultMessageHandler != NULL)
     {
