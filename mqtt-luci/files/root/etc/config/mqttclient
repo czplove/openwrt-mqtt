@@ -1,0 +1,8 @@
+config login
+	option server 'eth0'
+	option server_port '1'
+	option username 'root'
+	option password 'wrtnodemim'
+	option enable '1'
+	option server_ip '192.168.8.241'
+

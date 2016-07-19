@@ -1,0 +1,39 @@
+#!/bin/sh /etc/rc.common
+START=93
+
+run_mqtt()
+{
+    echo "run_mqtt"
+    local enable
+    config_get_bool enable $1 enable
+    
+    if [ $enable ]; then
+        local username
+        local password
+        local server_ip
+        local server_port
+        
+        config_get username $1 username
+        config_get password $1 password
+        config_get server_ip $1 server_ip
+        config_get server_port $1 server_port
+        
+         ~/stdoutpub topic --host $server_ip 
+        echo "MQTT Client has started."
+    fi
+}
+
+start()
+{
+    echo "aaaaaa----" >log.log
+    config_load mqttclient
+    config_foreach run_mqtt login
+    echo "aaaaaa----"
+}
+
+stop()
+{
+    killall stdoutpub
+    
+    echo "MQTT Client has stoped."
+}
