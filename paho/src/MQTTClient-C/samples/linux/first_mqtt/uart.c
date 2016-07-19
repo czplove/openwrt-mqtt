@@ -1,3 +1,31 @@
+/****************************************Copyright (c)**************************************************
+**                                      xi an you dian xue yuan
+**                                      graduate school
+**					XNMS
+**                                      WebSite :blog.csdn.net/tigerjb
+**--------------File Info-------------------------------------------------------------------------------
+** File name:			main.c
+** Last modified Date:  2011-01-31
+** Last Version:		1.0
+** Descriptions:
+**
+**------------------------------------------------------------------------------------------------------
+** Created by:			jibo
+** Created date:		2011-06-5
+** Version:			1.0
+** Descriptions:		The original version
+**
+**------------------------------------------------------------------------------------------------------
+** Modified by:
+** Modified date:
+** Version:
+** Descriptions:
+**
+********************************************************************************************************/
+
+
+
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>

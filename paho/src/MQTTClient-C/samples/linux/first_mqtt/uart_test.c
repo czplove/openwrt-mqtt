@@ -41,23 +41,39 @@
 
 */
 #include <stdio.h>
+#include "MQTTClient.h"
+
+#include <stdio.h>
 #include <signal.h>
 #include <memory.h>
 
 #include <sys/time.h>
 
-#include "MQTTClient.h"
 #include "uart.h"
 #include "cJSON.h"
 
-#define UART_DEVICE_A "/dev/ttyS1"
-#define BAUDRATE 9600
-#define MSG_LEN_PH 9
-#define MSG_LEN_ORP 17
 volatile int toStop = 0;
 
+/*接受的数据格式*/
+/*
+typedef	signed		char int8;
+typedef	unsigned	char uint8;
+typedef struct RFTXBUF
+{
+	uint8 	myNWK[4];//自身网络地址
+	uint8	myMAC[16];//mac;
+	uint8 	pNWK[4];//父节点网络地址
+	uint8	pMAC[16];//mac
+}RFTX;
+typedef struct
+{
+	uint8	type;
+	uint8	record[3];
+	RFTX 	addr;
+}Data_t;
 
-
+*/
+#define MSG_LEN 18
 void usage()
 {
 	printf("MQTT stdout publisher\n");
@@ -194,7 +210,7 @@ void messageArrived(MessageData* md)
 		printf("%.*s%s", (int)message->payloadlen, (char*)message->payload, opts.delimiter);
 	//fflush(stdout);
 }
-/*
+
 void To_string(uint8 *dest,char *src,uint8 length)
 {
   uint8 *xad;
@@ -209,26 +225,18 @@ void To_string(uint8 *dest,char *src,uint8 length)
     dest[(i<<1)+1]=ch+((ch<10)?'0':'7');
   }
 }
-*/
+
 int main(int argc, char** argv)
 {
 	int rc = 0;
 	unsigned char buf[100];
 	unsigned char readbuf[100];
 
-    float ph,ph_temp,orp,orp_temp;
-
 	/**********UART************/
-    int		ph_fd = FALSE;
-	int		orp_orp = FALSE;
+	int		fd = FALSE;
     int 	ret;
     unsigned char	rcv_buf[512];
 	unsigned char 	send_buf[64];
-    unsigned char  ph_cmd[]  = {0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC5, 0xDA};//用于获取PH传感器数据的发送数据
-	unsigned char  orp_cmd[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x06, 0xC5, 0xC8};//用于获取ORP传感器数据的发送数据
-    unsigned char  ph_rcv_buf[MSG_LEN_PH] = {0};
-    unsigned char  orp_rcv_buf[MSG_LEN_ORP] = {0};
-
 	Data_t	rcv_data;
     int i;
 	int j;
@@ -236,20 +244,31 @@ int main(int argc, char** argv)
     char *out;
     cJSON *root;
     int     count = 0;
+    uint8 dest[17] = {'\0'};
+    uint8 mac[17] = {'\0'};
+    uint8 nwk[17] = {'\0'};
+    uint8 value_1[16] = {'\0'};
+    uint8 value_2[16] = {'\0'};
 
     double temperature;
 
-    /* Open uart and init*/
-    ph_fd = UART_Open(ph_fd,UART_DEVICE_A);
-    if(FALSE == ph_fd){
+	fd = UART_Open(fd,"/dev/ttyS1");
+    if(FALSE == fd){
 	   printf("open error\n");
 	   exit(1);
     }
-    ret  = UART_Init(ph_fd,BAUDRATE,0,8,1,'N');
-    if (FALSE == ph_fd){
+    ret  = UART_Init(fd,115200,0,8,1,'N');
+    if (FALSE == fd){
 	   printf("Set Port Error\n");
 	   exit(1);
     }
+    ret  = UART_Send(fd,"*IDN?\n",6);
+    if(FALSE == ret){
+	   printf("write error!\n");
+	   exit(1);
+    }
+    printf("command: %s\n","*IDN?");
+    memset(rcv_buf,0,sizeof(rcv_buf));
 
 	if (argc < 2)
 		usage();
@@ -261,14 +280,14 @@ int main(int argc, char** argv)
 //	if (opts.showtopics)
 //		printf("topic is %s\n", topic);
 
-	getopts(argc, argv);
+//	getopts(argc, argv);
 
-	Network n;
-	Client c;
-	MQTTMessage message={0,0,0,0,"hello",5};//dup,qos,retained,packetid,payload,payloadlen
+//	Network n;
+//	Client c;
+//	MQTTMessage message={0,0,0,0,"hello",5};//dup,qos,retained,packetid,payload,payloadlen
 
 
-	NewNetwork(&n);
+/*	NewNetwork(&n);
 	ConnectNetwork(&n, opts.host, opts.port);
 	MQTTClient(&c, &n, 1000, buf, 256, readbuf, 256);
 
@@ -285,105 +304,27 @@ int main(int argc, char** argv)
 
 	rc = MQTTConnect(&c, &data);
 	printf("Connected %d\n", rc);
-
+*/
 	for(i=0;;i++)
     {
-        //memset(ph_rcv_buf,0,sizeof(ph_rcv_buf));
-		printf("send cmd(ph):");
+        memset(rcv_buf,0,sizeof(rcv_buf));
+        ret = UART_Recv(fd, rcv_buf,MSG_LEN);
 
-		for (i = 0; i < sizeof(ph_cmd); ++i)
-			printf("%d:%x  ",i, ph_cmd[i]);
-		printf("\n");
-        ret = UART_Send(ph_fd, ph_cmd,sizeof(ph_cmd));//send cmd (ph)
-        //TODO: ret value
-        sleep(1);
-        ret = UART_Recv(ph_fd ,ph_rcv_buf ,MSG_LEN_PH );
-        printf("(PH)Uart recvive ret is %d.\n",ret);
-        if( ret == MSG_LEN_PH )
-        {
-            printf("The number of data is right,check crc and publish message now.");
+        printf("ret %d----\n",ret);
+    	if( ret > 0 )
+		{//ret > 0
+            printf("----------------");
 
-            if(1)  //TODO   check crc
+            if(0 && rcv_buf[0] == '@')
             {
-                //TODO  change data　
-                ph = (ph_rcv_buf[3] * 16 * 16 + ph_rcv_buf[4]) / 100.0;
-		        ph_temp = (ph_rcv_buf[5] * 16 *16 + ph_rcv_buf[6]) / 10.0;
-
-                /*
-                for(j=0;j<18;++j)
-                {
-                     printf("%x",rcv_buf[j]);
-                }
-                printf("\nreceived!!\n");
-                for(j=1;j<ret;++j)
-                {
-                    printf("%x",rcv_buf[j]);
-                }
-                printf("\n");
-                To_string(dest,&rcv_buf[9],8);//
-                for(j=0;j<16;++j)
-                {
-                    printf(" dest:%c",dest[j]);
-                }
-                sprintf(nwk,"%x%x",rcv_buf[8]&0xff,rcv_buf[7]&0xff);
-                //printf("--%s nwk",nwk);
-*/
-	            root=cJSON_CreateObject();
-                cJSON_AddStringToObject(root,"device","PH");
-                cJSON_AddNumberToObject(root,"ph",ph);
-                cJSON_AddNumberToObject(root,"ph_temp",ph_temp);
-              //  cJSON_AddStringToObject(root,"nwk",nwk);
-              //  cJSON_AddStringToObject(root,"mac",dest);
-
-                /*
-                switch(rcv_buf[1])
-                {
-                    case 0x01:
-                        cJSON_AddNumberToObject(root,"temperature",rcv_buf[2]);//not work
-                        break;
-                    case 0x02:
-                        temperature = ((rcv_buf[2])+(rcv_buf[4])/100.0);
-                        cJSON_AddNumberToObject(root,"temperature",temperature);
-                        cJSON_AddNumberToObject(root,"humidity",rcv_buf[3]);
-                        break;
-                    case 0x03:
-                        //cJSON_AddNumberToObject(root,"",temperature);
-                        break;
-                    case 0x04:
-                        cJSON_AddNumberToObject(root,"illuminance",((rcv_buf[3]&0xff)<<8)|(rcv_buf[2]&0xff));
-                        break;
-                    case 0x05:
-                        cJSON_AddNumberToObject(root,"pressure",(rcv_buf[4]+rcv_buf[5]*16.0+rcv_buf[3]/16.0+rcv_buf[2]/256.0)/10.0);
-                        break;
-                    case 0x06:
-                        break;
-                    case 0x07:
-                        cJSON_AddNumberToObject(root,"x",rcv_buf[2]&0xff);
-                        cJSON_AddNumberToObject(root,"y",rcv_buf[3]&0xff);
-                        cJSON_AddNumberToObject(root,"z",rcv_buf[4]&0xff);
-                        break;
-                    default:
-                        break;
-                }
-                */
-                //cJSON_AddStringToObject(root,"mac",mac);
-                //UART_JSON(rcv_buf,MSG_LEN);
-                out=cJSON_Print(root);
-                printf("%s\n",out);
-                message.payload = out ;
-                message.payloadlen = strlen(out);
-                ret = MQTTPublish(&c,topic,&message);
-                printf("ret is %d\n",ret);
-                cJSON_Delete(root);
-                free(out);/* Print to text, Delete the cJSON, print it, release the string. */
 
             }
 //	   		printf("%x\n",rcv_buf[1]);
 
 			else
-            {/*
-                printf("the first bit is not ＠");
-                while( rcv_buf[0] != '@')
+            {
+                //printf("the first bit is not ＠");
+                while( 1 || rcv_buf[0] != '@')
                 {
                    if( UART_Recv(fd, rcv_buf,1)>0)
 
@@ -400,18 +341,16 @@ int main(int argc, char** argv)
                     }
                 }
                 UART_Recv(fd, rcv_buf,MSG_LEN - 1);
-            */
+
             }
         }
 		else
 		{
-            /*
             for(j=0;j<ret;j++)
             {
                 printf("j: %d char ---%x\n",j,rcv_buf[j]);
             }
     	    printf("cannot receive data1\n");
-            */
         //    break;
 	   	}
 
@@ -423,9 +362,9 @@ int main(int argc, char** argv)
 		MQTTYield(&c, 1000);
 	}
 */	printf("Stopping\n");
- 	UART_Close(ph_fd);
-	MQTTDisconnect(&c);
-	n.disconnect(&n);
+ 	UART_Close(fd);
+//	MQTTDisconnect(&c);
+//	n.disconnect(&n);
 
 	return 0;
 }
