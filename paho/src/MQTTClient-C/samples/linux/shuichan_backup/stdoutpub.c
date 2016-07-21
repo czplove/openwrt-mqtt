@@ -50,8 +50,7 @@
 #include "uart.h"
 #include "cJSON.h"
 
-#define UART_DEVICE_1 "/dev/ttyS1"
-#define UART_DEVICE_0 "/dev/ttyS0"
+#define UART_DEVICE_A "/dev/ttyS1"
 #define BAUDRATE 9600
 #define MSG_LEN_PH 9
 #define MSG_LEN_ORP 17
@@ -217,19 +216,18 @@ int main(int argc, char** argv)
 	unsigned char buf[100];
 	unsigned char readbuf[100];
 
-    char ph_run = 0,orp_run = 0;
     float ph,ph_temp,orp,orp_temp;
 
 	/**********UART************/
     int		ph_fd = FALSE;
-    int		orp_fd = FALSE;
+	int		orp_orp = FALSE;
     int 	ret;
     unsigned char	rcv_buf[512];
 	unsigned char 	send_buf[64];
     unsigned char  ph_cmd[]  = {0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC5, 0xDA};//用于获取PH传感器数据的发送数据
 	unsigned char  orp_cmd[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x06, 0xC5, 0xC8};//用于获取ORP传感器数据的发送数据
     unsigned char  ph_rcv_buf[MSG_LEN_PH] = {0};
-    unsigned char  orp_rcv_buf[MSG_LEN_ORP +1] = {0};
+    unsigned char  orp_rcv_buf[MSG_LEN_ORP] = {0};
 
 	Data_t	rcv_data;
     int i;
@@ -242,14 +240,8 @@ int main(int argc, char** argv)
     double temperature;
 
     /* Open uart and init*/
-    ph_fd = UART_Open(ph_fd,UART_DEVICE_1);
+    ph_fd = UART_Open(ph_fd,UART_DEVICE_A);
     if(FALSE == ph_fd){
-	   printf("open error\n");
-	   exit(1);
-    }
-
-    orp_fd = UART_Open(orp_fd,UART_DEVICE_0);
-    if(FALSE == orp_fd){
 	   printf("open error\n");
 	   exit(1);
     }
@@ -259,11 +251,6 @@ int main(int argc, char** argv)
 	   exit(1);
     }
 
-    ret  = UART_Init(orp_fd,BAUDRATE,0,8,1,'N');
-    if (FALSE == orp_fd){
-	   printf("Set Port Error\n");
-	   exit(1);
-    }
 	if (argc < 2)
 		usage();
 
@@ -294,91 +281,93 @@ int main(int argc, char** argv)
 
 	data.keepAliveInterval = 10;
 	data.cleansession = 1;
-	printf("Connecting to %s:%d\n", opts.host, opts.port);
+	printf("Connecting to %s %d\n", opts.host, opts.port);
 
 	rc = MQTTConnect(&c, &data);
-    if(!rc)
-        printf("Connected successfully\n");
-    else
-    {
-        printf("Connected to %s:%d failed.\n",opts.host,opts.port);
-        exit(-1);
-    }
+	printf("Connected %d\n", rc);
 
 	for(i=0;;i++)
     {
- //       /*
         //memset(ph_rcv_buf,0,sizeof(ph_rcv_buf));
-		printf("\nsend cmd(ph):");
+		printf("send cmd(ph):");
 
 		for (i = 0; i < sizeof(ph_cmd); ++i)
 			printf("%d:%x  ",i, ph_cmd[i]);
 		printf("\n");
         ret = UART_Send(ph_fd, ph_cmd,sizeof(ph_cmd));//send cmd (ph)
-        if(ret != sizeof(ph_cmd))
-        {
-            printf("(PH)Send commend error!\n");
-        }
+        //TODO: ret value
         sleep(1);
         ret = UART_Recv(ph_fd ,ph_rcv_buf ,MSG_LEN_PH );
         printf("(PH)Uart recvive ret is %d.\n",ret);
         if( ret == MSG_LEN_PH )
         {
-            printf("The number of data is right,check crc and publish message now.\n");
+            printf("The number of data is right,check crc and publish message now.");
 
-            if(CRC16(ph_rcv_buf,MSG_LEN_PH))  //   check crc
+            if(1)  //TODO   check crc
             {
-                // change data　
+                //TODO  change data　
                 ph = (ph_rcv_buf[3] * 16 * 16 + ph_rcv_buf[4]) / 100.0;
 		        ph_temp = (ph_rcv_buf[5] * 16 *16 + ph_rcv_buf[6]) / 10.0;
 
+                /*
+                for(j=0;j<18;++j)
+                {
+                     printf("%x",rcv_buf[j]);
+                }
+                printf("\nreceived!!\n");
+                for(j=1;j<ret;++j)
+                {
+                    printf("%x",rcv_buf[j]);
+                }
+                printf("\n");
+                To_string(dest,&rcv_buf[9],8);//
+                for(j=0;j<16;++j)
+                {
+                    printf(" dest:%c",dest[j]);
+                }
+                sprintf(nwk,"%x%x",rcv_buf[8]&0xff,rcv_buf[7]&0xff);
+                //printf("--%s nwk",nwk);
+*/
 	            root=cJSON_CreateObject();
                 cJSON_AddStringToObject(root,"device","PH");
                 cJSON_AddNumberToObject(root,"ph",ph);
                 cJSON_AddNumberToObject(root,"ph_temp",ph_temp);
+              //  cJSON_AddStringToObject(root,"nwk",nwk);
+              //  cJSON_AddStringToObject(root,"mac",dest);
 
-                out=cJSON_Print(root);
-                printf("%s\n",out);
-                message.payload = out ;
-                message.payloadlen = strlen(out);
-                ret = MQTTPublish(&c,topic,&message);
-                printf("ret is %d\n",ret);
-                cJSON_Delete(root);
-                free(out);// Print to text, Delete the cJSON, print it, release the string.
-            }
-
-        }
-//*/
-		printf("\nsend cmd(orp):");
-        for (i = 0; i < sizeof(orp_cmd); ++i)
-			printf("%d:%x  ",i, orp_cmd[i]);
-		printf("\n");
-        ret = UART_Send(orp_fd, orp_cmd,sizeof(orp_cmd));//send cmd (ph)
-        if(ret != sizeof(orp_cmd))
-        {
-            printf("(ORP)Send commend error!\n");
-        }
-        sleep(1);
-        ret = UART_Recv(orp_fd ,orp_rcv_buf ,MSG_LEN_ORP );
-        sleep(1);
-        printf("(ORP)Uart recvive ret is %d.\n",ret);
-        if( ret == MSG_LEN_ORP )
-        {
-            printf("The number of data is right,check crc and publish message now.\n");
-            printf("receive:");
-            for(i=0;i < MSG_LEN_ORP;++i)
-                printf("%x ",orp_rcv_buf[i]);
-            printf("\n");
-            if(CRC16(orp_rcv_buf,MSG_LEN_ORP))  //   check crc
-            {
-
-                orp = (orp_rcv_buf[3]*16*16 + orp_rcv_buf[4])/1000.0;
-                orp_temp = (orp_rcv_buf[5]*16*16 + orp_rcv_buf[6])/100.0;
-	            root=cJSON_CreateObject();
-                cJSON_AddStringToObject(root,"device","ORP");
-                cJSON_AddNumberToObject(root,"orp",orp);
-                cJSON_AddNumberToObject(root,"orp_temp",orp_temp);
-
+                /*
+                switch(rcv_buf[1])
+                {
+                    case 0x01:
+                        cJSON_AddNumberToObject(root,"temperature",rcv_buf[2]);//not work
+                        break;
+                    case 0x02:
+                        temperature = ((rcv_buf[2])+(rcv_buf[4])/100.0);
+                        cJSON_AddNumberToObject(root,"temperature",temperature);
+                        cJSON_AddNumberToObject(root,"humidity",rcv_buf[3]);
+                        break;
+                    case 0x03:
+                        //cJSON_AddNumberToObject(root,"",temperature);
+                        break;
+                    case 0x04:
+                        cJSON_AddNumberToObject(root,"illuminance",((rcv_buf[3]&0xff)<<8)|(rcv_buf[2]&0xff));
+                        break;
+                    case 0x05:
+                        cJSON_AddNumberToObject(root,"pressure",(rcv_buf[4]+rcv_buf[5]*16.0+rcv_buf[3]/16.0+rcv_buf[2]/256.0)/10.0);
+                        break;
+                    case 0x06:
+                        break;
+                    case 0x07:
+                        cJSON_AddNumberToObject(root,"x",rcv_buf[2]&0xff);
+                        cJSON_AddNumberToObject(root,"y",rcv_buf[3]&0xff);
+                        cJSON_AddNumberToObject(root,"z",rcv_buf[4]&0xff);
+                        break;
+                    default:
+                        break;
+                }
+                */
+                //cJSON_AddStringToObject(root,"mac",mac);
+                //UART_JSON(rcv_buf,MSG_LEN);
                 out=cJSON_Print(root);
                 printf("%s\n",out);
                 message.payload = out ;
@@ -388,8 +377,8 @@ int main(int argc, char** argv)
                 cJSON_Delete(root);
                 free(out);/* Print to text, Delete the cJSON, print it, release the string. */
 
-
             }
+//	   		printf("%x\n",rcv_buf[1]);
 
 			else
             {/*

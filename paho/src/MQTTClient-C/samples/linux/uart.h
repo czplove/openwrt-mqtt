@@ -34,8 +34,9 @@ int UART_Open(int fd,char* port);
 void UART_Close(int fd);
 int UART_Set(int fd,int speed,int flow_ctrl,int databits,int stopbits,int parity);
 int UART_Init(int fd, int speed,int flow_ctrlint ,int databits,int stopbits,char parity);
-int UART_Recv(int fd, char *rcv_buf,int data_len);
-int UART_Send(int fd, char *send_buf,int data_len);
+int UART_Recv(int fd, unsigned char *rcv_buf,int data_len);
+int UART_Send(int fd, unsigned char *send_buf,int data_len);
 void UART_JSON(char *rec_data,int len,cJSON *root );
+unsigned short CRC16(unsigned char *puchMsg,unsigned short msgLen);
 
 #endif
