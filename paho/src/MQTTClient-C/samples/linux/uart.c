@@ -291,7 +291,7 @@ unsigned short CRC16(unsigned char *puchMsg,unsigned short msgLen)
 		uchCRCHi = uchCRCLo ^ auchCRCHi[uIndex] ;
 		uchCRCLo = auchCRCLo[uIndex] ;
 	}
-printf("crc check: %x %x \n",uchCRCHi,uchCRCLo);
+//  printf("crc check: %x %x \n",uchCRCHi,uchCRCLo);
 
     if(uchCRCHi == checkHi || uchCRCLo == checkLo)
         return 1;

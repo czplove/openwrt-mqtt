@@ -308,6 +308,7 @@ int main(int argc, char** argv)
 
 	for(i=0;;i++)
     {
+ //       /*
         //memset(ph_rcv_buf,0,sizeof(ph_rcv_buf));
 		printf("\nsend cmd(ph):");
 
@@ -332,9 +333,6 @@ int main(int argc, char** argv)
                 ph = (ph_rcv_buf[3] * 16 * 16 + ph_rcv_buf[4]) / 100.0;
 		        ph_temp = (ph_rcv_buf[5] * 16 *16 + ph_rcv_buf[6]) / 10.0;
 
-                if(ph_temp > 60 || ph_temp < -20)
-                    continue;
-                /*
 	            root=cJSON_CreateObject();
                 cJSON_AddStringToObject(root,"device","PH");
                 cJSON_AddNumberToObject(root,"ph",ph);
@@ -348,31 +346,11 @@ int main(int argc, char** argv)
                 printf("ret is %d\n",ret);
                 cJSON_Delete(root);
                 free(out);// Print to text, Delete the cJSON, print it, release the string.
-                */
-                sprintf(str,"%.3f",ph);
-                message.payload = str;
-                message.payloadlen = strlen(str);
-                ret = MQTTPublish(&c,"ph",&message);
-                printf("Data type:ph        data:%.3f\n",ph);
 
-                sprintf(str,"%.3f",ph_temp);
-                message.payload = str;
-                message.payloadlen = strlen(str);
-                ret = MQTTPublish(&c,"ph_temp",&message);
-                printf("Data type:ph_temp   data:%.3f\n",ph_temp);
-
-            }
-			else
-            {
-                printf("CRC check is not passed.\n");
             }
 
         }
-		else
-		{
-    	    printf("cannot receive data1\n");
-	   	}
-
+//*/
 		printf("\nsend cmd(orp):");
         for (i = 0; i < sizeof(orp_cmd); ++i)
 			printf("%d:%x  ",i, orp_cmd[i]);
@@ -398,10 +376,6 @@ int main(int argc, char** argv)
 
                 orp = (orp_rcv_buf[3]*16*16 + orp_rcv_buf[4])/1000.0;
                 orp_temp = (orp_rcv_buf[5]*16*16 + orp_rcv_buf[6])/100.0;
-
-                if(orp_temp > 60 || orp_temp < -20)
-                    continue;
-                /*
 	            root=cJSON_CreateObject();
                 cJSON_AddStringToObject(root,"device","ORP");
                 cJSON_AddNumberToObject(root,"orp",orp);
@@ -414,37 +388,55 @@ int main(int argc, char** argv)
                 ret = MQTTPublish(&c,topic,&message);
                 printf("ret is %d\n",ret);
                 cJSON_Delete(root);
-                free(out);
-                */
-                sprintf(str,"%.3f",orp);
-                message.payload = str;
-                message.payloadlen = strlen(str);
-                ret = MQTTPublish(&c,"orp",&message);
-                printf("Data type:orp       data:%.3f\n",orp);
+                free(out);/* Print to text, Delete the cJSON, print it, release the string. */
 
-                sprintf(str,"%.3f",orp_temp);
-                message.payload = str;
-                message.payloadlen = strlen(str);
-                ret = MQTTPublish(&c,"orp_temp",&message);
-                printf("Data type:orp_temp  data:%.3f\n",orp_temp);
 
             }
 
 			else
-            {
-                printf("CRC check is not passed.\n");
+            {/*
+                printf("the first bit is not ＠");
+                while( rcv_buf[0] != '@')
+                {
+                   if( UART_Recv(fd, rcv_buf,1)>0)
+
+
+                    {printf("%x-",rcv_buf[0]);
+                   // printf("hahah not @\n");
+                    if(count++ > 1000)
+                    {
+
+                        printf("error,no '＠'，波特率？\n");
+                        exit(-1);
+                    }
+
+                    }
+                }
+                UART_Recv(fd, rcv_buf,MSG_LEN - 1);
+            */
             }
         }
 		else
 		{
+            /*
+            for(j=0;j<ret;j++)
+            {
+                printf("j: %d char ---%x\n",j,rcv_buf[j]);
+            }
     	    printf("cannot receive data1\n");
+            */
+        //    break;
 	   	}
-        sleep(5);
 
     }
+	printf("Subscribed %d\n", rc);
 
-	printf("Stopping\n");
-	UART_Close(ph_fd);
+/*	while (!toStop)
+	{
+		MQTTYield(&c, 1000);
+	}
+*/	printf("Stopping\n");
+ 	UART_Close(ph_fd);
 	MQTTDisconnect(&c);
 	n.disconnect(&n);
 
